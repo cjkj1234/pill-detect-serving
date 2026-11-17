@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # FastAPI + ONNX Runtime 서빙 이미지 (PyTorch 없음)
 FROM python:3.12-slim
 
@@ -9,18 +10,24 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# 의존성 레이어를 먼저 만들어서, 코드만 바뀌면 이 단계는 캐시를 쓴다
+# 실행 전용 사용자. 파일은 root 소유로 두고 읽기만 하게 한다.
+# (예전에는 마지막에 chown -R로 소유자를 바꿨는데, 그러면 .venv 전체가 새 레이어에 한 번 더 복사돼 이미지가 커진다)
+RUN useradd --create-home --uid 10001 app
+
+# 의존성 레이어를 먼저 만들어서, 코드만 바뀌면 이 단계는 캐시를 쓴다.
+# uv 다운로드 캐시는 BuildKit 캐시 마운트에만 두고 이미지 레이어에는 남기지 않는다.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-default-groups --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-default-groups --no-install-project
 
 COPY README.md ./
 COPY src ./src
-RUN uv sync --frozen --no-default-groups
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-default-groups
 
 # 클래스 매핑은 이미지에 넣고, 모델 파일(model.onnx)은 볼륨이나 MODEL_PATH로 넘긴다
 COPY models/class_mapping.json ./models/class_mapping.json
 
-RUN useradd --create-home --uid 10001 app && chown -R app /app
 USER app
 
 ENV PATH="/app/.venv/bin:$PATH" \

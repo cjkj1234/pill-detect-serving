@@ -1,0 +1,7 @@
+[server]
+# API의 업로드 한도(MAX_UPLOAD_MB 기본 10MB)와 맞춘다
+maxUploadSize = 10
+headless = true
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# 모델 가중치 — 저장소에 올리지 않는다 (models/README.md 참고)
+models/*.onnx
+models/*.data
+!models/class_mapping.json
+
+# 벤치마크·양자화 산출물
+outputs/
+
+# 기타
+.DS_Store
+.env
+Ultralytics/
+
+# 로컬 미리보기 설정
+.claude/

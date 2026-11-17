@@ -1,0 +1,42 @@
+[project]
+name = "pill-detect-serving"
+version = "0.1.0"
+description = "PillDetect 알약 탐지 모델 서빙 — ONNX Runtime + FastAPI + Streamlit + Docker"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "onnxruntime>=1.20.0",
+    "numpy>=2.0.0",
+    "opencv-python-headless>=4.10.0",
+    "pillow>=10.4.0",
+    "pydantic>=2.7.0",
+]
+
+[dependency-groups]
+# Streamlit 웹은 API만 호출하므로 onnxruntime 등 서빙 의존성 없이 따로 설치한다 (Dockerfile.web: --only-group web)
+web = [
+    "streamlit>=1.67.0",
+    "requests>=2.32.0",
+    "pillow>=10.4.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+    "onnx>=1.16.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "web"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pill_serving"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

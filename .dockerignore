@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+**/__pycache__
+.pytest_cache
+outputs
+tests
+scripts
+models/*.onnx
+models/*.data
+*.md
+!README.md

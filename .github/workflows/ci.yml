@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --frozen --python 3.12
+
+      - name: Run tests
+        run: uv run pytest -v
+
+  docker:
+    # 이미지 두 개를 빌드하고, 더미 모델로 컨테이너를 띄워 실제 HTTP 요청까지 확인한다
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Make dummy model
+        run: |
+          uv sync --frozen --python 3.12
+          uv run python scripts/make_dummy_model.py --output models/model.onnx
+
+      - name: Build and start containers
+        run: docker compose up --build --detach --wait --wait-timeout 180
+
+      - name: Smoke test API
+        run: |
+          curl --fail --silent http://localhost:8000/health | tee health.json
+          grep -q '"model_loaded":true' health.json
+          uv run python -c "from PIL import Image; Image.new('RGB', (976, 1280), 'white').save('pill.png')"
+          curl --fail --silent -F "file=@pill.png;type=image/png" http://localhost:8000/predict | tee predict.json
+          uv run python -c "import json; d = json.load(open('predict.json', encoding='utf-8')); assert len(d['detections']) == 3, d; print('detections:', [x['name'] for x in d['detections']])"
+
+      - name: Smoke test web
+        run: curl --fail --silent http://localhost:8501/_stcore/health
+
+      - name: Image sizes
+        if: always()
+        run: docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep -i serving || docker images
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down

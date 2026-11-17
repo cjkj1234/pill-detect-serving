@@ -52,7 +52,12 @@ jobs:
 
       - name: Image sizes
         if: always()
-        run: docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep -i serving || docker images
+        run: |
+          docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep -i serving || docker images
+          for image in pill-detect-serving-api pill-detect-serving-web; do
+            echo "--- $image layers (largest first) ---"
+            docker history --format '{{.Size}}\t{{.CreatedBy}}' "$image" | sort -h -r | head -6 | cut -c1-150
+          done
 
       - name: Logs on failure
         if: failure()

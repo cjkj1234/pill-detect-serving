@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Streamlit 웹 이미지 — API만 호출하므로 onnxruntime 등 서빙 의존성은 넣지 않는다
 FROM python:3.12-slim
 
@@ -9,13 +10,17 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# 실행 전용 사용자. 파일은 root 소유로 두고 읽기만 하게 한다 (chown -R로 레이어가 복제되지 않게).
+RUN useradd --create-home --uid 10001 app
+
+# uv 다운로드 캐시는 BuildKit 캐시 마운트에만 두고 이미지 레이어에는 남기지 않는다.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --only-group web --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --only-group web --no-install-project
 
 COPY .streamlit ./.streamlit
 COPY web ./web
 
-RUN useradd --create-home --uid 10001 app && chown -R app /app
 USER app
 
 ENV PATH="/app/.venv/bin:$PATH" \
